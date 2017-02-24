@@ -28,11 +28,10 @@ gulp.task('build-client', function() {
 
 
 const tasks = ['compile', 'build-client'];
-gulp.task('deamon', function () {
+gulp.task('deamon', tasks, function () {
   return stream = nodemon({
        script: 'build/server/index.js' // run ES5 code
      , watch: 'src' // watch ES2015 code
    })
-    .on('start', tasks)
     .on('restart', tasks);
 });
