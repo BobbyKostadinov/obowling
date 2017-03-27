@@ -59,31 +59,64 @@
 	console.log('start');
 
 	var updateBoard = function updateBoard(score) {
-	  var $new = (0, _jquery2.default)('.frame li:last').clone();
-	  $new.find('.badge').text(score);
-	  $new.find('.label').removeClass('label-primary');
-	  $new.find('.label').addClass('label-default');
-	  $new.find('.label').text('Frame Score');
-	  (0, _jquery2.default)('.frame').append($new);
+	  var $new = (0, _jquery2.default)('.frames li:last').clone();
+	  $new.find('.score').text(score);
+	  $new.attr('data-index', parseInt($new.attr('data-index')) + 1);
+	  (0, _jquery2.default)('.frames').append($new);
 	};
 
-	var updateTotalScore = function updateTotalScore(score) {
-	  var $first = (0, _jquery2.default)('.frame li:first');
-	  $first.find('.badge').text(score);
+	var updateBonus = function updateBonus(_ref) {
+	  var index = _ref.index,
+	      bonus = _ref.bonus;
+
+	  console.log(index, bonus, 'bonus');
+	  var $first = (0, _jquery2.default)('*[data-index="' + index + '"]');
+	  $first.find('.bonus').text(bonus);
 	};
 
 	var form = (0, _jquery2.default)("#addFrameBtn");
 	var rolls$ = _Rx2.default.Observable.fromEvent(form, 'submit').do(function (e) {
 	  return e.preventDefault();
-	}).map(function (_) {
-	  return parseInt(form.find('#roll1').val()) + parseInt(form.find('#roll2').val());
+	}).map(function (e) {
+	  return { roll1: parseInt(form.find('#roll1').val()), roll2: parseInt(form.find('#roll2').val()) };
 	});
 
-	rolls$.subscribe(updateBoard);
+	var final$ = new _Rx2.default.Subject().subscribe(updateBonus);
 
-	var endGame$ = rolls$.scan(function (x, y) {
-	  return x + y;
-	}, 0).subscribe(updateTotalScore);
+	var bonus$ = rolls$.scan(function (acc, _ref2, index) {
+	  var roll1 = _ref2.roll1,
+	      roll2 = _ref2.roll2;
+
+	  var isStrike = roll1 === 10;
+	  var isSpare = roll1 !== 10 && roll1 + roll2 === 10;
+	  if (isStrike) acc.push({ index: index, rolls: 2, type: 'strike', bonus: 0 });else if (isSpare) acc.push({ index: index, rolls: 1, type: 'spare', bonus: 0 });else final$.next({ index: index, rolls: 0, type: 'blank', bonus: 0 });
+
+	  acc.forEach(function (element, accIndex) {
+	    if (element.index === index) return;
+	    if (element.rolls === 0) {
+	      final$.next(element);
+	      delete acc[accIndex];
+	      return;
+	    }
+	    if (isStrike || element.rolls === 1) {
+	      element.bonus += roll1;
+	      element.rolls -= 1;
+	      return;
+	    }
+	    element.rolls = 0;
+	    element.bonus += roll1 + roll2;
+	  });
+
+	  return acc;
+	}, []);
+
+	bonus$.subscribe();
+
+	var rollsSum$ = rolls$.map(function (_ref3) {
+	  var roll1 = _ref3.roll1,
+	      roll2 = _ref3.roll2;
+	  return roll1 + roll2;
+	}).subscribe(updateBoard);
 
 /***/ },
 /* 1 */
